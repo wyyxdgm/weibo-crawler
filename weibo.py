@@ -48,6 +48,8 @@ class Weibo(object):
                                      1)  # 开始爬的页，如果中途被限制而结束可以用此定义开始页码
         self.write_mode = config[
             'write_mode']  # 结果信息保存类型，为list形式，可包含csv、mongo和mysql三种类型
+        self.original_data_to_mongo = config[
+            'original_data_to_mongo']  # 取值范围为0、1, 0代表不存储原始数据到mongo,1代表存储
         self.original_pic_download = config[
             'original_pic_download']  # 取值范围为0、1, 0代表不下载原创微博图片,1代表下载
         self.retweet_pic_download = config[
@@ -91,6 +93,7 @@ class Weibo(object):
         self.got_count = 0  # 存储爬取到的微博数
         self.weibo = []  # 存储爬取到的所有微博信息
         self.weibo_id_list = []  # 存储爬取到的所有微博id
+        self.users_by_n = {}  # 存储爬取到的所有@用户，以昵称为key
 
     def validate_config(self, config):
         """验证配置是否正确"""
@@ -99,7 +102,7 @@ class Weibo(object):
         argument_list = [
             'filter', 'original_pic_download', 'retweet_pic_download',
             'original_video_download', 'retweet_video_download',
-            'download_comment'
+            'download_comment', 'original_data_to_mongo'
         ]
         for argument in argument_list:
             if config[argument] != 0 and config[argument] != 1:
@@ -266,6 +269,7 @@ class Weibo(object):
         js = self.get_json(params)
         if js['ok']:
             info = js['data']['userInfo']
+            self.save_original_data_to_mongo('original_user', [info])
             user_info = OrderedDict()
             user_info['id'] = self.user_config['user_id']
             user_info['screen_name'] = info.get('screen_name', '')
@@ -710,12 +714,18 @@ class Weibo(object):
             logger.info(u'原创部分：')
         self.print_one_weibo(weibo)
         logger.info('-' * 120)
-
+    def mapt(self, item):
+        item['update_time'] = datetime.now()
+        return item
+    def save_original_data_to_mongo(self, collection, data):
+        if 'mongo' in self.write_mode and self.original_data_to_mongo:
+            self.info_to_mongodb(collection, map(self.mapt, data))
     def get_one_weibo(self, info):
         """获取一条微博的全部信息"""
         try:
             weibo_info = info['mblog']
             weibo_id = weibo_info['id']
+            self.save_original_data_to_mongo('original_weibo', [weibo_info])
             retweeted_status = weibo_info.get('retweeted_status')
             is_long = True if weibo_info.get(
                 'pic_num') > 9 else weibo_info.get('isLongText')
@@ -746,10 +756,37 @@ class Weibo(object):
                     weibo = self.parse_weibo(weibo_info)
             weibo['created_at'] = self.standardize_date(
                 weibo_info['created_at'])
+            self.get_at_users_detail(weibo)
             return weibo
         except Exception as e:
             logger.exception(e)
-
+    def get_at_users_detail(self, weibo):
+        """获取@微博用户详情信息"""
+        if weibo.get('at_users') and len(weibo['at_users']) > 0:
+            logger.info(u'处理@微博用户详情信息: %s', weibo['at_users'])
+            at_users = {}
+            for at_user in weibo['at_users'].split(','):
+                if at_user not in self.users_by_n:
+                    logger.info(u'获取微博用户@: %s', at_user)
+                    r = requests.get('https://weibo.com/ajax/profile/info',
+                            params={ "screen_name": at_user },
+                            headers=self.headers,
+                            verify=False)
+                    js = None
+                    try:
+                        js = r.json()
+                    except Exception as e:
+                        # 没有cookie会抓取失败
+                        logger.info(u'未能抓取 微博用户{at_user}'.format(at_user=at_user))
+                    if js.get('data'):
+                        at_user_dict = js['data']['user']
+                        screen_name = at_user_dict['screen_name']
+                        if screen_name and not self.users_by_n.get(screen_name):
+                            # user -- screen_name,id,location,gender
+                            at_users[screen_name] = at_user_dict
+                            self.users_by_n[screen_name] = at_user_dict
+            self.info_to_mongodb('at_users', list(at_users.values()))
+            logger.info(u'处理@微博用户详情信息done！ %s', ','.join(at_users.keys()))
     def get_weibo_comments(self, weibo, max_count, on_downloaded):
         """
         :weibo standardlized weibo

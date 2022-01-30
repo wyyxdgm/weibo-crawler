@@ -1,10 +1,11 @@
 {
   "user_id_list": ["7244899562", "6815283367"],
   "filter": 0,
-  "remove_html_tag": 0,
+  "remove_html_tag": 1,
   "since_date": 1,
   "start_page": 1,
   "write_mode": ["csv", "mysql", "mongo"],
+  "original_data_to_mongo": 1,
   "original_pic_download": 1,
   "retweet_pic_download": 0,
   "original_video_download": 1,
@@ -12,7 +13,7 @@
   "download_comment": 0,
   "comment_max_download_count": 100,
   "result_dir_name": 0,
-  "cookie": "",
+  "cookie": "SUB=_2AkMWqpS9f8NxqwJRmfoWym7lb4x_zwDEieKg9mVmJRMxHRl-yj8XqmodtRB6PSq6Uk8QaCr5y4YZrFQSp48piz-JfpXU; SUBP=0033WrSXqPxfM72-Ws9jqgMF55529P9D9WF_1TillyEYhAXNb7JWrHKZ; XSRF-TOKEN=aV7Oxa5K6qWac1mt3yd6G9pu; WBPSESS=1QIptkPh0r7VTljIOfRP66_bBruFDZbdXIT2yR5m3wgbrLs3jxXNspakh9lmT2EPFMGdOwHYRdTpwlyBRCeE_ZsQTNnrIKx7JXULVPPhoes3RjmGYxPiU2N2j82JF-AjTAcNmJxAQ2B3txKapTf5WpWwAmzDHBApNKcgLOAqRI0=",
   "mysql_config": {
     "host": "localhost",
     "port": 3306,
