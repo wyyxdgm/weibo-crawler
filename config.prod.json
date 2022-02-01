@@ -3,7 +3,7 @@
   "filter": 0,
   "remove_html_tag": 1,
   "since_date": "2001-01-01",
-  "start_page": 208,
+  "start_page": 238,
   "write_mode": ["csv", "mysql", "mongo"],
   "original_data_to_mongo": 1,
   "original_pic_download": 1,

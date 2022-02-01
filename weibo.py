@@ -1579,12 +1579,19 @@ class Weibo(object):
                 page_count = self.get_page_count()
                 wrote_count = 0
                 page1 = 0
-                random_pages = random.randint(1, 5)
+                random_pages = random.randint(3, 9)
                 self.start_date = datetime.now().strftime('%Y-%m-%d')
                 pages = range(self.start_page, page_count + 1)
                 for page in tqdm(pages, desc='Progress'):
                     is_end = self.get_one_page(page)
                     if is_end:
+                        if (page - self.start_page) % 10 == 0:
+                            while is_end:
+                                ss = random.randint(30, 60)
+                                logger.info(u'微博爬取10页间歇，当前第%d页，准备等待%d秒', page, ss)
+                                sleep(ss)
+                                is_end = self.get_one_page(page)
+                                logger.info(u'微博爬取10页间歇，抓取结果，page=%d,is_end=%s' % ( page, is_end))
                         break
 
                     if page % 20 == 0:  # 每爬20页写入一次文件
@@ -1628,8 +1635,10 @@ class Weibo(object):
                             user_config['since_date'] = str(since_date)
                     else:
                         user_config['since_date'] = self.since_date
-                    if len(info) > 3:
-                        user_config['query_list'] = info[3].split(',')
+                    if len(info) > 3 and info[3].isdigit():
+                        user_config['start_page'] = info[3]
+                    if len(info) > 4:
+                        user_config['query_list'] = info[4].split(',')
                     else:
                         user_config['query_list'] = self.query_list
                     if user_config not in user_config_list:
