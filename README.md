@@ -233,6 +233,12 @@ $ pip install -r requirements.txt
         "user": "root",
         "password": "123456",
         "charset": "utf8mb4"
+    },
+    "mongo_config": {
+        "host": "localhost",
+        "port": 27017,
+        "username": "",
+        "password": ""
     }
 }
 ```
@@ -341,6 +347,8 @@ cookie为可选参数，即可填可不填，具体区别见[添加cookie与不�
 如果想要设置cookie，可以按照[如何获取cookie](#如何获取cookie可选)中的方法，获取cookie，并将上面的"your cookie"替换成真实的cookie即可。<br>
 **设置mysql_config（可选）**<br>
 mysql_config控制mysql参数配置。如果你不需要将结果信息写入mysql，这个参数可以忽略，即删除或保留都无所谓；如果你需要写入mysql且config.json文件中mysql_config的配置与你的mysql配置不一样，请将该值改成你自己mysql中的参数配置。
+**设置mongo_config（可选）**<br>
+mongo_config控制mongo参数配置。如果你不需要将结果信息写入mongo，这个参数可以忽略，即删除或保留都无所谓；如果你需要写入mongo且config.json文件中mongo_config的配置与你的mongo配置不一样，请将该值改成你自己mongo中的参数配置。
 **设置start_page（可选）**<br>
 start_page为爬取微博的初始页数，默认参数为1，即从所爬取用户的当前第一页微博内容开始爬取。
 若在大批量爬取微博时出现中途被限制中断的情况，可通过查看csv文件内目前已爬取到的微博数除以10，向下取整后的值即为中断页数，手动设置start_page参数为中断页数，重新运行即可从被中断的节点继续爬取剩余微博内容。

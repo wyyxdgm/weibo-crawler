@@ -20,5 +20,11 @@
     "user": "root",
     "password": "password",
     "charset": "utf8mb4"
+  },
+  "mongo_config": {
+    "host": "localhost",
+    "port": 27017,
+    "username": "",
+    "password": ""
   }
 }
