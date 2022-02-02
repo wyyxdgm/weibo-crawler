@@ -4,6 +4,7 @@
   "remove_html_tag": 1,
   "since_date": "2001-01-01",
   "start_page": 629,
+  "record_last_page": 1,
   "write_mode": ["csv", "mysql", "mongo"],
   "original_data_to_mongo": 1,
   "original_pic_download": 1,
