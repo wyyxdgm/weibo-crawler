@@ -1624,7 +1624,7 @@ class Weibo(object):
                     logger.info(
                         u'get_one_page[第%d页]done!，is_end=%s' % (page, is_end))
                     if is_end:
-                        if page < page_count:
+                        if page <= page_count:
                             try_count = 0
                             while is_end:
                                 try_count += 1
