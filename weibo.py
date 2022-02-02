@@ -1598,7 +1598,20 @@ class Weibo(object):
         data['start_page_list'].append(page)
         with codecs.open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False)
-        logger.info(u'start_page[%d]写入json文件完毕,保存路径:', page)
+        logger.info(u'[record_start_page]:start_page=%d,写入json文件完毕,保存路径:', page)
+        logger.info(path)
+    def record_page_count(self, page_count):
+        if not self.record_last_page:
+            return
+        data = {}
+        path = self.get_filepath('start-page.json')
+        if os.path.isfile(path):
+            with codecs.open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        data['page_count'] = page_count
+        with codecs.open(path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False)
+        logger.info(u'[record_page_count]:page_count=%d,写入json文件完毕,保存路径:', page_count)
         logger.info(path)
     def get_pages(self):
         """获取全部微博"""
@@ -1611,6 +1624,7 @@ class Weibo(object):
             if since_date <= today:
                 page_count = self.get_page_count()
                 logger.info(u'微博总页数%d', page_count)
+                self.record_page_count(page_count)
                 wrote_count = 0
                 page1 = 0
                 random_pages = random.randint(3, 9)
