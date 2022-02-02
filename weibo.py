@@ -1606,7 +1606,8 @@ class Weibo(object):
                 for page in tqdm(pages, desc='Progress'):
                     is_end = self.get_one_page(page)
                     self.record_start_page(page)
-                    logger.info(u'forpages:%d页，is_end=%s' % (page, is_end))
+                    logger.info(
+                        u'get_one_page[第%d页]done!，is_end=%s' % (page, is_end))
                     if is_end:
                         if page < page_count:
                             try_time = 0
@@ -1618,8 +1619,10 @@ class Weibo(object):
                                 is_end = self.get_one_page(page)
                                 self.record_start_page(page)
                                 logger.info(u'微博爬取10页间歇，抓取结果，page=%d,is_end=%s' % ( page, is_end))
-                                if try_time > 5:
+                                if is_end and try_time > 5:
                                     self.record_start_page(page)
+                                    logger.info(
+                                        u'微博爬取10页间歇，尝试5次失败即将退出，当前页数page=%d,is_end=%s' % (page, is_end))
                                     break;
                         else:
                             self.record_start_page(page)
