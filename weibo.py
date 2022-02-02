@@ -933,6 +933,7 @@ class Weibo(object):
 
     def get_one_page(self, page):
         """获取一页的全部微博"""
+        logger.info(u'get_one_page，当前第%d页', page)
         try:
             js = self.get_weibo_json(page)
             if js['ok']:
@@ -970,6 +971,7 @@ class Weibo(object):
                             else:
                                 logger.info(u'正在过滤转发微博')
             else:
+                logger.info(u'提前结束:\n{}'.format(json.dumps(js)))
                 return True
             logger.info(u'{}已获取{}({})的第{}页微博{}'.format(
                 '-' * 30, self.user['screen_name'], self.user['id'], page,
@@ -1566,7 +1568,17 @@ class Weibo(object):
                     self.download_files('img', 'retweet', wrote_count)
                 if self.retweet_video_download:
                     self.download_files('video', 'retweet', wrote_count)
-
+    def record_start_page(self, page):
+        data = {}
+        path = self.get_filepath('start-page.json')
+        if os.path.isfile(path):
+            with codecs.open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        data['start_page'] = page
+        with codecs.open(path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False)
+        logger.info(u'start_page[%d]写入json文件完毕,保存路径:', page)
+        logger.info(path)
     def get_pages(self):
         """获取全部微博"""
         try:
@@ -1577,23 +1589,33 @@ class Weibo(object):
             today = datetime.strptime(str(date.today()), '%Y-%m-%d')
             if since_date <= today:
                 page_count = self.get_page_count()
+                logger.info(u'微博总页数%d', page_count)
                 wrote_count = 0
                 page1 = 0
                 random_pages = random.randint(3, 9)
                 self.start_date = datetime.now().strftime('%Y-%m-%d')
                 pages = range(self.start_page, page_count + 1)
+
                 for page in tqdm(pages, desc='Progress'):
                     is_end = self.get_one_page(page)
+                    self.record_start_page(page)
+                    logger.info(u'forpages:%d页，is_end=%s' % (page, is_end))
                     if is_end:
-                        if (page - self.start_page) % 10 == 0:
+                        if page < page_count:
+                            try_time = 0
                             while is_end:
-                                ss = random.randint(30, 60)
+                                try_time += 1
+                                ss = try_time * 60 * random.randint(1, 3) + random.randint(30, 60)
                                 logger.info(u'微博爬取10页间歇，当前第%d页，准备等待%d秒', page, ss)
                                 sleep(ss)
                                 is_end = self.get_one_page(page)
                                 logger.info(u'微博爬取10页间歇，抓取结果，page=%d,is_end=%s' % ( page, is_end))
-                        break
-
+                                if try_time>5:
+                                    self.record_start_page(page)
+                                    break;
+                        else:
+                            self.record_start_page(page)
+                            break
                     if page % 20 == 0:  # 每爬20页写入一次文件
                         self.write_data(wrote_count)
                         wrote_count = self.got_count
