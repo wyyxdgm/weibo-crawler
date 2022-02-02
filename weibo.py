@@ -1600,6 +1600,9 @@ class Weibo(object):
             json.dump(data, f, ensure_ascii=False)
         logger.info(u'[record_start_page]:start_page=%d,写入json文件完毕,保存路径:', page)
         logger.info(path)
+        if self.user_config_file_path and self.user:
+            self.update_user_config_file(self.user_config_file_path)
+            logger.info(u'同步更新user_id_list用户配置文件成功')
     def record_page_count(self, page_count):
         if not self.record_last_page:
             return
