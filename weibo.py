@@ -46,6 +46,8 @@ class Weibo(object):
         self.since_date = since_date  # 起始时间，即爬取发布日期从该值到现在的微博，形式为yyyy-mm-dd
         self.start_page = config.get('start_page',
                                      1)  # 开始爬的页，如果中途被限制而结束可以用此定义开始页码
+        # 开启记录抓取到的最新页码，进而可以确认下次的start_page值，默认路径：weibo/${screen_name}/{id}.start-page.json
+        self.record_last_page = config.get('record_last_page', 1)
         self.write_mode = config[
             'write_mode']  # 结果信息保存类型，为list形式，可包含csv、mongo和mysql三种类型
         self.original_data_to_mongo = config[
@@ -1569,6 +1571,8 @@ class Weibo(object):
                 if self.retweet_video_download:
                     self.download_files('video', 'retweet', wrote_count)
     def record_start_page(self, page):
+        if not self.record_last_page:
+            return
         data = {}
         path = self.get_filepath('start-page.json')
         if os.path.isfile(path):
@@ -1612,8 +1616,9 @@ class Weibo(object):
                                 logger.info(u'微博爬取10页间歇，当前第%d页，准备等待%d秒', page, ss)
                                 sleep(ss)
                                 is_end = self.get_one_page(page)
+                                self.record_start_page(page)
                                 logger.info(u'微博爬取10页间歇，抓取结果，page=%d,is_end=%s' % ( page, is_end))
-                                if try_time>5:
+                                if try_time > 5:
                                     self.record_start_page(page)
                                     break;
                         else:
