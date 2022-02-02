@@ -218,6 +218,8 @@ $ pip install -r requirements.txt
     "filter": 1,
     "remove_html_tag": 1,
     "since_date": "2018-01-01",
+    "start_page": 1,
+    "record_last_page": 1,
     "write_mode": ["csv"],
     "original_pic_download": 1,
     "retweet_pic_download": 0,
@@ -255,6 +257,11 @@ user_id_list的值也可以是文件路径，我们可以把要爬的所有微�
 1223178222 胡歌
 1669879400 迪丽热巴
 1729370543 郭碧婷
+```
+复杂示例：
+从第199页开始抓取数据，直到最后一页或者日期到2001-02-02
+```
+1223178222 胡歌 2001-02-02 199
 ```
 假如文件叫user_id_list.txt，则user_id_list设置代码为：
 ```
@@ -352,6 +359,8 @@ mongo_config控制mongo参数配置。如果你不需要将结果信息写入mon
 **设置start_page（可选）**<br>
 start_page为爬取微博的初始页数，默认参数为1，即从所爬取用户的当前第一页微博内容开始爬取。
 若在大批量爬取微博时出现中途被限制中断的情况，可通过查看csv文件内目前已爬取到的微博数除以10，向下取整后的值即为中断页数，手动设置start_page参数为中断页数，重新运行即可从被中断的节点继续爬取剩余微博内容。
+**设置record_last_page**<br>
+record_last_page控制是否记录当前抓取的最新页号，可用于辅助确认下次的start_page值。记录文件路径：weibo/${screen_name}/{id}.start-page.json
 ### 4.设置数据库（可选）
 本部分是可选部分，如果不需要将爬取信息写入数据库，可跳过这一步。本程序目前支持MySQL数据库和MongoDB数据库，如果你需要写入其它数据库，可以参考这两个数据库的写法自己编写。<br>
 **MySQL数据库写入**<br>
