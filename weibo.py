@@ -1575,6 +1575,9 @@ class Weibo(object):
             with codecs.open(path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
         data['start_page'] = page
+        if not data.get('start_page_list'):
+            data['start_page_list'] = []
+        data['start_page_list'].append(page)
         with codecs.open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False)
         logger.info(u'start_page[%d]写入json文件完毕,保存路径:', page)
