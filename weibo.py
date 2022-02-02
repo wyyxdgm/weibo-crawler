@@ -1536,13 +1536,27 @@ class Weibo(object):
                 info = line.split(' ')
                 if len(info) > 0 and info[0].isdigit():
                     if self.user_config['user_id'] == info[0]:
+                        start_page = str(self.user_config['start_page'])
+                        since_date = self.user_config['since_date']
+                        if self.user_config.get('done'):
+                            start_page = str(1)
+                            since_date = self.start_date
                         if len(info) == 1:
                             info.append(self.user['screen_name'])
-                            info.append(self.start_date)
+                            info.append(since_date)
+                            info.append(start_page)
                         if len(info) == 2:
-                            info.append(self.start_date)
-                        if len(info) > 2:
-                            info[2] = self.start_date
+                            info[1] = self.user['screen_name']
+                            info.append(since_date)
+                            info.append(start_page)
+                        if len(info) == 3:
+                            info[1] = self.user['screen_name']
+                            info[2] = since_date
+                            info.append(start_page)
+                        if len(info) > 3:
+                            info[1] = self.user['screen_name']
+                            info[2] = since_date
+                            info[3] = start_page
                         lines[i] = ' '.join(info)
                         break
         with codecs.open(user_config_file_path, 'w', encoding='utf-8') as f:
@@ -1601,30 +1615,32 @@ class Weibo(object):
                 page1 = 0
                 random_pages = random.randint(3, 9)
                 self.start_date = datetime.now().strftime('%Y-%m-%d')
-                pages = range(self.start_page, page_count + 1)
+                pages = range(self.user_config['start_page'], page_count + 1)
 
                 for page in tqdm(pages, desc='Progress'):
                     is_end = self.get_one_page(page)
                     self.record_start_page(page)
+                    self.user_config['start_page'] = page
                     logger.info(
                         u'get_one_page[第%d页]done!，is_end=%s' % (page, is_end))
                     if is_end:
                         if page < page_count:
-                            try_time = 0
+                            try_count = 0
                             while is_end:
-                                try_time += 1
-                                ss = try_time * 60 * random.randint(1, 3) + random.randint(30, 60)
+                                try_count += 1
+                                ss = try_count * 60 * random.randint(1, 3) + random.randint(30, 60)
                                 logger.info(u'微博爬取10页间歇，当前第%d页，准备等待%d秒', page, ss)
                                 sleep(ss)
                                 is_end = self.get_one_page(page)
                                 self.record_start_page(page)
                                 logger.info(u'微博爬取10页间歇，抓取结果，page=%d,is_end=%s' % ( page, is_end))
-                                if is_end and try_time > 5:
+                                if is_end and try_count > 5:
                                     self.record_start_page(page)
                                     logger.info(
                                         u'微博爬取10页间歇，尝试5次失败即将退出，当前页数page=%d,is_end=%s' % (page, is_end))
                                     break;
                         else:
+                            self.user_config['done'] = True
                             self.record_start_page(page)
                             break
                     if page % 20 == 0:  # 每爬20页写入一次文件
@@ -1669,7 +1685,9 @@ class Weibo(object):
                     else:
                         user_config['since_date'] = self.since_date
                     if len(info) > 3 and info[3].isdigit():
-                        user_config['start_page'] = info[3]
+                        user_config['start_page'] = int(info[3])
+                    else:
+                        user_config['start_page'] = self.start_page
                     if len(info) > 4:
                         user_config['query_list'] = info[4].split(',')
                     else:
