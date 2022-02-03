@@ -167,17 +167,29 @@ class Weibo(object):
         except ValueError:
             return False
 
+
+    def _get_json(self, params, t):
+        """获取网页中json数据"""
+        if t > 0:
+            url = 'https://m.weibo.cn/api/container/getIndex?'
+            r = requests.get(url,
+                            params=params,
+                            headers=self.headers,
+                            verify=False)
+            try:
+                return r.json()
+            except Exception as e:
+                logger.error(u'_get_json error:[t=%d,url=%s,res:%s]', t, r.url, r.text)
+                sleep(max(t-3, 1) * random.randint(1,30))
+                return self._get_json(params, t-1)
+        return 0
     def get_json(self, params):
         """获取网页中json数据"""
-        url = 'https://m.weibo.cn/api/container/getIndex?'
-        r = requests.get(url,
-                         params=params,
-                         headers=self.headers,
-                         verify=False)
-        try:
-            return r.json()
-        except Exception as e:
-            logger.error(u'get_json error:url=%s,res:%s', r.url, r.text)
+        js = self._get_json(params, 3)
+        if not js:
+            logger.error(u'get_json 失败')
+            sys.exit()
+        return js
     def get_weibo_json(self, page):
         """获取网页中微博json数据"""
         params = {
