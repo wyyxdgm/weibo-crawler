@@ -97,7 +97,7 @@ class Weibo(object):
         self.weibo = []  # 存储爬取到的所有微博信息
         self.weibo_id_list = []  # 存储爬取到的所有微博id
         self.users_by_n = {}  # 存储爬取到的所有@用户，以昵称为key
-        self.init_user_by_n_from_db() # 从mongo初始化数据到内存中
+        # self.init_user_by_n_from_db() # 从mongo初始化数据到内存中
 
     def validate_config(self, config):
         """验证配置是否正确"""
@@ -168,13 +168,13 @@ class Weibo(object):
         except ValueError:
             return False
 
-    def _get_json(self, params, tt, t):
+    def _get_json(self, params, headers, tt, t):
         """获取网页中json数据"""
         if t > 0:
             url = 'https://m.weibo.cn/api/container/getIndex?'
             r = requests.get(url,
                             params=params,
-                            headers=self.headers,
+                            headers=headers or self.headers,
                             verify=False)
             try:
                 return r.json()
@@ -184,9 +184,9 @@ class Weibo(object):
                 return self._get_json(params, t, t-1)
         logger.error(u'_get_json 结束尝试，共失败%d次。', tt)
         return 0
-    def get_json(self, params):
+    def get_json(self, params, headers=None):
         """获取网页中json数据"""
-        js = self._get_json(params, 3, 3)
+        js = self._get_json(params, headers, 3, 3)
         if not js:
             logger.error(u'get_json 失败')
             sys.exit()
@@ -780,13 +780,15 @@ class Weibo(object):
             logger.exception(e)
     def get_json_by_nick(self, nick):
         try:
+            headers = copy.deepcopy(self.headers)
+            del headers['Cookie']
             r = requests.get('https://m.weibo.cn/n/%s' % nick,
                 params={},
-                headers=self.headers,
+                headers=headers,
                 verify=False)
             user_id = r.url[len('https://m.weibo.cn/u/'):]
             params = {'containerid': '100505' + user_id}
-            return self.get_json(params)
+            return self.get_json(params, headers)
         except Exception as e:
             # 没有cookie会获取失败
             logger.info(
