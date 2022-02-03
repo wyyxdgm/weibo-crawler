@@ -782,7 +782,7 @@ class Weibo(object):
         if weibo.get('at_users') and len(weibo['at_users']) > 0:
             logger.info(u'获取@微博用户详情信息: %s', weibo['at_users'])
             at_users = {}
-            for at_user in weibo['at_users'].split(','):
+            for at_user in set(weibo['at_users'].split(',')):
                 if at_user not in self.users_by_n:
                     r = requests.get('https://m.weibo.cn/n/%s' % at_user,
                             params={},
