@@ -67,7 +67,7 @@ class Weibo(object):
             'result_dir_name', 0)  # 结果目录名，取值为0或1，决定结果文件存储在用户昵称文件夹里还是用户id文件夹里
         cookie = config.get('cookie')  # 微博cookie，可填可不填
         user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36'
-        self.headers = {'User_Agent': user_agent, 'Cookie': cookie}
+        self.headers = {'User-Agent': user_agent, 'Cookie': cookie}
         self.mysql_config = config.get('mysql_config')  # MySQL数据库连接配置，可以不填
         self.mongo_config = config.get('mongo_config')  # MongoDB数据库连接配置，可以不填
         user_id_list = config['user_id_list']
@@ -174,8 +174,10 @@ class Weibo(object):
                          params=params,
                          headers=self.headers,
                          verify=False)
-        return r.json()
-
+        try:
+            return r.json()
+        except Exception as e:
+            logger.error(u'get_json error:url=%s,res:%s', r.url, r.text)
     def get_weibo_json(self, page):
         """获取网页中微博json数据"""
         params = {
