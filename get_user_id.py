@@ -168,30 +168,31 @@ class Weibo(object):
         except ValueError:
             return False
 
-    def _get_json(self, params, tt, t):
+    def _get_json(self, params, headers, tt, t):
         """获取网页中json数据"""
         if t > 0:
             url = 'https://m.weibo.cn/api/container/getIndex?'
             r = requests.get(url,
-                            params=params,
-                            headers=self.headers,
-                            verify=False)
+                             params=params,
+                             headers=headers or self.headers,
+                             verify=False)
             try:
                 return r.json()
             except Exception as e:
-                logger.error(u'_get_json error:[t=%d,url=%s,res:%s]', t, r.url, r.text)
+                logger.error(
+                    u'_get_json error:[t=%d,url=%s,res:%s]', t, r.url, r.text)
                 sleep((tt - t + 1) * random.randint(1, 30))
                 return self._get_json(params, t, t-1)
         logger.error(u'_get_json 结束尝试，共失败%d次。', tt)
         return 0
-    def get_json(self, params):
+
+    def get_json(self, params, headers=None):
         """获取网页中json数据"""
-        js = self._get_json(params, 3, 3)
+        js = self._get_json(params, headers, 3, 3)
         if not js:
             logger.error(u'get_json 失败')
             sys.exit()
         return js
-
 
     def do_fetch_at_users(self):
         logger.info(u'do_fetch_at_users')
@@ -277,13 +278,15 @@ class Weibo(object):
 
     def get_json_by_nick(self, nick):
         try:
+            headers = copy.deepcopy(self.headers)
+            del headers['Cookie']
             r = requests.get('https://m.weibo.cn/n/%s' % nick,
                              params={},
-                             headers=self.headers,
+                             headers=headers,
                              verify=False)
             user_id = r.url[len('https://m.weibo.cn/u/'):]
             params = {'containerid': '100505' + user_id}
-            return self.get_json(params)
+            return self.get_json(params, headers)
         except Exception as e:
             # 没有cookie会获取失败
             logger.info(
