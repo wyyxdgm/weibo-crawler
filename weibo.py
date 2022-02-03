@@ -766,11 +766,10 @@ class Weibo(object):
     def get_at_users_detail(self, weibo):
         """获取@微博用户详情信息"""
         if weibo.get('at_users') and len(weibo['at_users']) > 0:
-            logger.info(u'处理@微博用户详情信息: %s', weibo['at_users'])
+            logger.info(u'获取@微博用户详情信息: %s', weibo['at_users'])
             at_users = {}
             for at_user in weibo['at_users'].split(','):
                 if at_user not in self.users_by_n:
-                    logger.info(u'获取微博用户@: %s', at_user)
                     r = requests.get('https://weibo.com/ajax/profile/info',
                             params={ "screen_name": at_user },
                             headers=self.headers,
@@ -778,10 +777,13 @@ class Weibo(object):
                     js = None
                     try:
                         js = r.json()
+                        logger.info(u'成功获取微博#用户: %s', at_user)
                     except Exception as e:
-                        # 没有cookie会抓取失败
-                        logger.info(u'未能抓取 微博用户{at_user}'.format(at_user=at_user))
-                    if js.get('data'):
+                        # 没有cookie会获取失败
+                        logger.info(
+                            u'未能获取微博#用户:{at_user}'.format(at_user=at_user))
+                        logger.info(r.text)
+                    if js and js.get('data'):
                         at_user_dict = js['data']['user']
                         screen_name = at_user_dict['screen_name']
                         if screen_name and not self.users_by_n.get(screen_name):
@@ -935,7 +937,8 @@ class Weibo(object):
 
     def get_one_page(self, page):
         """获取一页的全部微博"""
-        logger.info(u'get_one_page，当前第%d页', page)
+        logger.info(u'获取一页微博，第%d页', page)
+        self.record_start_page(page)
         try:
             js = self.get_weibo_json(page)
             if js['ok']:
@@ -974,6 +977,9 @@ class Weibo(object):
                                 logger.info(u'正在过滤转发微博')
             else:
                 logger.info(u'提前结束:\n{}'.format(json.dumps(js)))
+                logger.info(u'{}获取微博失败，{}({})的第{}页{}'.format(
+                    '-' * 30, self.user['screen_name'], self.user['id'], page,
+                    '-' * 30))
                 return 2
             logger.info(u'{}已获取{}({})的第{}页微博{}'.format(
                 '-' * 30, self.user['screen_name'], self.user['id'], page,
@@ -1598,11 +1604,10 @@ class Weibo(object):
         data['start_page_list'].append(page)
         with codecs.open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False)
-        logger.info(u'[record_start_page]:start_page=%d,写入json文件完毕,保存路径:', page)
-        logger.info(path)
+        logger.info(u'记录当前页号%d,写入json文件完毕,保存路径:%s', page, path)
         if self.user_config_file_path and self.user:
             self.update_user_config_file(self.user_config_file_path)
-            logger.info(u'同步更新user_id_list用户配置文件成功')
+            logger.info(u'同步更新到用户配置文件%s', self.user_config_file_path)
     def record_page_count(self, page_count):
         if not self.record_last_page:
             return
@@ -1636,28 +1641,20 @@ class Weibo(object):
 
                 for page in tqdm(pages, desc='Progress'):
                     is_end = self.get_one_page(page)
-                    self.record_start_page(page)
                     self.user_config['start_page'] = page
-                    logger.info(
-                        u'get_one_page[第%d页]done!，is_end=%s' % (page, is_end))
-                    if is_end == 2 and page <= page_count:
+                    if is_end == 2 and page < page_count:
                         try_count = 0
                         while is_end:
                             try_count += 1
                             ss = try_count * 60 * random.randint(1, 3) + random.randint(30, 60)
-                            logger.info(u'微博爬取10页间歇，第%d次，当前第%d页，准备等待%d秒', try_count, page, ss)
+                            logger.info(u'微博爬取重试，第%d页，第%d次，当前准备等待%d秒', page, try_count, ss)
                             sleep(ss)
                             is_end = self.get_one_page(page)
-                            self.record_start_page(page)
-                            logger.info(u'微博爬取10页间歇，第%d次，抓取结果，page=%d,is_end=%s' % (try_count, page, is_end))
                             if is_end and try_count > 4:
-                                self.record_start_page(page)
-                                logger.info(
-                                    u'微博爬取10页间歇，尝试%d次失败即将退出，当前页数page=%d,is_end=%s' % (try_count, page, is_end))
+                                logger.info(u'微博爬取重试失败即将退出，第%d页，第%d次' % (page, try_count))
                                 break;
                     elif is_end == True:
                         self.user_config['done'] = True
-                        self.record_start_page(page)
                         break
                     if page % 20 == 0:  # 每爬20页写入一次文件
                         self.write_data(wrote_count)
