@@ -97,7 +97,7 @@ class Weibo(object):
         self.weibo = []  # 存储爬取到的所有微博信息
         self.weibo_id_list = []  # 存储爬取到的所有微博id
         self.users_by_n = {}  # 存储爬取到的所有@用户，以昵称为key
-        # self.init_user_by_n_from_db() # 从mongo初始化数据到内存中
+        self.init_user_by_n_from_db() # 从mongo初始化数据到内存中
 
     def validate_config(self, config):
         """验证配置是否正确"""
