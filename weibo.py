@@ -770,28 +770,31 @@ class Weibo(object):
             at_users = {}
             for at_user in weibo['at_users'].split(','):
                 if at_user not in self.users_by_n:
-                    r = requests.get('https://weibo.com/ajax/profile/info',
-                            params={ "screen_name": at_user },
+                    r = requests.get('https://m.weibo.cn/n/%s' % at_user,
+                            params={},
                             headers=self.headers,
                             verify=False)
                     js = None
                     try:
-                        js = r.json()
-                        logger.info(u'成功获取微博#用户: %s', at_user)
+                        user_id = r.url[len('https://m.weibo.cn/u/'):]
+                        params = {'containerid': '100505' + user_id}
+                        js = self.get_json(params)
+                        logger.info(u'获取微博@用户成功，昵称: %s', at_user)
                     except Exception as e:
                         # 没有cookie会获取失败
                         logger.info(
-                            u'未能获取微博#用户:{at_user}'.format(at_user=at_user))
+                            u'获取微博@用户失败，昵称:{at_user}'.format(at_user=at_user))
                         logger.info(r.text)
-                    if js and js.get('data'):
-                        at_user_dict = js['data']['user']
+                    if js['ok']:
+                        at_user_dict = js['data']['userInfo']
+                        # at_user_dict = js['data']['user']
                         screen_name = at_user_dict['screen_name']
                         if screen_name and not self.users_by_n.get(screen_name):
                             # user -- screen_name,id,location,gender
                             at_users[screen_name] = at_user_dict
                             self.users_by_n[screen_name] = at_user_dict
             self.info_to_mongodb('at_users', list(at_users.values()))
-            logger.info(u'处理@微博用户详情信息done！ %s', ','.join(at_users.keys()))
+            logger.info(u'写入数据库{}个用户:[{}]'.format(len(at_users), ','.join(at_users.keys())))
     def get_weibo_comments(self, weibo, max_count, on_downloaded):
         """
         :weibo standardlized weibo
