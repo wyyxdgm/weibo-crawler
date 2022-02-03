@@ -168,8 +168,7 @@ class Weibo(object):
         except ValueError:
             return False
 
-
-    def _get_json(self, params, t):
+    def _get_json(self, params, tt, t):
         """获取网页中json数据"""
         if t > 0:
             url = 'https://m.weibo.cn/api/container/getIndex?'
@@ -181,12 +180,13 @@ class Weibo(object):
                 return r.json()
             except Exception as e:
                 logger.error(u'_get_json error:[t=%d,url=%s,res:%s]', t, r.url, r.text)
-                sleep(max(t-3, 1) * random.randint(1,30))
-                return self._get_json(params, t-1)
+                sleep((tt - t + 1) * random.randint(1, 30))
+                return self._get_json(params, t, t-1)
+        logger.error(u'_get_json 结束尝试，共失败%d次。', tt)
         return 0
     def get_json(self, params):
         """获取网页中json数据"""
-        js = self._get_json(params, 3)
+        js = self._get_json(params, 3, 3)
         if not js:
             logger.error(u'get_json 失败')
             sys.exit()
@@ -202,26 +202,94 @@ class Weibo(object):
             # logger.info('%s, %s',id, at_users)
             if item.get('screen_name'):
                 map_got[item['screen_name']] = 1
-        
+
+        expired_name_list = self.mongo_find('expired_name_list', {})
+        map_expired = {}
+        for item in expired_name_list:
+            map_expired[item] = 1
         #mysql 需要填充的
         cusor = self.mysql_create_table(
                     self.mysql_config, 'select id, at_users from weibo;')
         counts = cusor.fetchall()
-        map1 = {}
+        resolved_nick_map = {}
         todo_list = []
         for (id, at_users) in counts:
             # logger.info('%s, %s',id, at_users)
             if at_users:
                 for at_user in at_users.split(','):
-                    if not map1.get(at_user):
+                    if not resolved_nick_map.get(at_user):
                         # unique_list.append(at_user)
-                        map1[at_user] = 1
-                        if not map_got.get(at_user):
+                        resolved_nick_map[at_user] = 1
+                        # 过滤掉以获取以及已确认失效
+                        if not map_got.get(at_user) and not map_expired.get(at_user):
                             todo_list.append(at_user)
+        logger.info('总计昵称数量：%d条', len(resolved_nick_map))
+        logger.info('总计昵称已获取：%d条', len(map_got))
+        logger.info('总计已确认无效：%d条', len(map_expired))
+        logger.info('总计待处理：%d条', len(todo_list))
         logger.info(todo_list)
-        logger.info(len(todo_list))
-        
-        
+
+        # self.get_mongodb_collection('expired_name_list').drop()
+        map_expired_new = 0
+        map_got_new = 0
+        for item in todo_list:
+            js = self.get_json_by_nick(item)
+            if js and js['ok']:
+                at_user_dict = js['data']['userInfo']
+                map_got[item] = at_user_dict
+                map_got_new += 1
+                self.info_to_mongodb('at_users', [at_user_dict])
+                # self.get_mongodb_collection(
+                #     'expired_name_list').delete_one({"id": item})
+            else:
+                map_expired_new += 1
+                map_expired[item] = 'new'
+                self.info_to_mongodb('expired_name_list', {"id": item})
+        logger.info('{}共计处理{}条{}', '*' * 30, len(todo_list), '*' * 30)
+        logger.info('{}总计昵称新获取：{}条{}', '*' * 30, len(map_got_new),'*' * 30)
+        logger.info('{}总计新确认无效：{}条{}', '*' * 30, len(map_expired_new),'*' * 30)
+
+    def get_mongodb_collection(self, collection):
+        """将爬取的信息写入MongoDB数据库"""
+        try:
+            import pymongo
+        except ImportError:
+            logger.warning(
+                u'系统中可能没有安装pymongo库，请先运行 pip install pymongo ，再运行程序')
+            sys.exit()
+        try:
+            from pymongo import MongoClient
+            mongo_config = {
+                "username": "",
+                "password": "",
+                # "host": "localhost",
+                # "port": 27017,
+            }
+            if self.mongo_config:
+                mongo_config = self.mongo_config
+            client = MongoClient(**mongo_config)
+            db = client['weibo']
+            return db[collection]
+        except pymongo.errors.ServerSelectionTimeoutError:
+            logger.warning(
+                u'系统中可能没有安装或启动MongoDB数据库，请先根据系统环境安装或启动MongoDB，再运行程序')
+            sys.exit()
+
+    def get_json_by_nick(self, nick):
+        try:
+            r = requests.get('https://m.weibo.cn/n/%s' % nick,
+                             params={},
+                             headers=self.headers,
+                             verify=False)
+            user_id = r.url[len('https://m.weibo.cn/u/'):]
+            params = {'containerid': '100505' + user_id}
+            return self.get_json(params)
+        except Exception as e:
+            # 没有cookie会获取失败
+            logger.info(
+                u'获取微博用户信息，昵称:{nick}'.format(nick=nick))
+            logger.info(r.text)
+            return None
     def mongo_find(self, collection, query):
         try:
             import pymongo

@@ -97,6 +97,7 @@ class Weibo(object):
         self.weibo = []  # 存储爬取到的所有微博信息
         self.weibo_id_list = []  # 存储爬取到的所有微博id
         self.users_by_n = {}  # 存储爬取到的所有@用户，以昵称为key
+        self.init_user_by_n_from_db() # 从mongo初始化数据到内存中
 
     def validate_config(self, config):
         """验证配置是否正确"""
@@ -167,8 +168,7 @@ class Weibo(object):
         except ValueError:
             return False
 
-
-    def _get_json(self, params, t):
+    def _get_json(self, params, tt, t):
         """获取网页中json数据"""
         if t > 0:
             url = 'https://m.weibo.cn/api/container/getIndex?'
@@ -180,12 +180,13 @@ class Weibo(object):
                 return r.json()
             except Exception as e:
                 logger.error(u'_get_json error:[t=%d,url=%s,res:%s]', t, r.url, r.text)
-                sleep(max(t-3, 1) * random.randint(1,30))
-                return self._get_json(params, t-1)
+                sleep((tt - t + 1) * random.randint(1, 30))
+                return self._get_json(params, t, t-1)
+        logger.error(u'_get_json 结束尝试，共失败%d次。', tt)
         return 0
     def get_json(self, params):
         """获取网页中json数据"""
-        js = self._get_json(params, 3)
+        js = self._get_json(params, 3, 3)
         if not js:
             logger.error(u'get_json 失败')
             sys.exit()
@@ -777,29 +778,44 @@ class Weibo(object):
             return weibo
         except Exception as e:
             logger.exception(e)
+    def get_json_by_nick(self, nick):
+        try:
+            r = requests.get('https://m.weibo.cn/n/%s' % nick,
+                params={},
+                headers=self.headers,
+                verify=False)
+            user_id = r.url[len('https://m.weibo.cn/u/'):]
+            params = {'containerid': '100505' + user_id}
+            return self.get_json(params)
+        except Exception as e:
+            # 没有cookie会获取失败
+            logger.info(
+                u'获取微博用户信息，昵称:{nick}'.format(nick=nick))
+            logger.info(r.text)
+            return None
+    def init_user_by_n_from_db(self):
+        if 'mongo' not in self.write_mode:
+            return
+        collection = self.get_mongodb_collection('at_users')
+        results = collection.find()
+        for item in results:
+            # logger.info('%s, %s',id, at_users)
+            if item.get('screen_name'):
+                self.users_by_n[item['screen_name']] = 1
+        logger.info(u'初始化读取at_users完成,一共%d条记录\n%s', len(self.users_by_n), list(self.users_by_n.keys()))
+
     def get_at_users_detail(self, weibo):
         """获取@微博用户详情信息"""
+        if 'mongo' not in self.write_mode:
+            return
         if weibo.get('at_users') and len(weibo['at_users']) > 0:
             logger.info(u'获取@微博用户详情信息: %s', weibo['at_users'])
             at_users = {}
             for at_user in set(weibo['at_users'].split(',')):
                 if at_user not in self.users_by_n:
-                    r = requests.get('https://m.weibo.cn/n/%s' % at_user,
-                            params={},
-                            headers=self.headers,
-                            verify=False)
-                    js = None
-                    try:
-                        user_id = r.url[len('https://m.weibo.cn/u/'):]
-                        params = {'containerid': '100505' + user_id}
-                        js = self.get_json(params)
+                    js = self.get_json_by_nick(at_user)
+                    if js and js['ok']:
                         logger.info(u'获取微博@用户成功，昵称: %s', at_user)
-                    except Exception as e:
-                        # 没有cookie会获取失败
-                        logger.info(
-                            u'获取微博@用户失败，昵称:{at_user}'.format(at_user=at_user))
-                        logger.info(r.text)
-                    if js['ok']:
                         at_user_dict = js['data']['userInfo']
                         # at_user_dict = js['data']['user']
                         screen_name = at_user_dict['screen_name']
@@ -807,6 +823,8 @@ class Weibo(object):
                             # user -- screen_name,id,location,gender
                             at_users[screen_name] = at_user_dict
                             self.users_by_n[screen_name] = at_user_dict
+                    else:
+                        logger.info(u'获取微博@用户失败！！昵称: %s', at_user)
             self.info_to_mongodb('at_users', list(at_users.values()))
             logger.info(u'写入数据库{}个用户:[{}]'.format(len(at_users), ','.join(at_users.keys())))
     def get_weibo_comments(self, weibo, max_count, on_downloaded):
@@ -1152,8 +1170,7 @@ class Weibo(object):
             json.dump(data, f, ensure_ascii=False)
         logger.info(u'%d条微博写入json文件完毕,保存路径:', self.got_count)
         logger.info(path)
-
-    def info_to_mongodb(self, collection, info_list):
+    def get_mongodb_collection(self, collection):
         """将爬取的信息写入MongoDB数据库"""
         try:
             import pymongo
@@ -1173,20 +1190,26 @@ class Weibo(object):
                 mongo_config = self.mongo_config
             client = MongoClient(**mongo_config)
             db = client['weibo']
-            collection = db[collection]
-            if len(self.write_mode) > 1:
-                new_info_list = copy.deepcopy(info_list)
-            else:
-                new_info_list = info_list
-            for info in new_info_list:
-                if not collection.find_one({'id': info['id']}):
-                    collection.insert_one(info)
-                else:
-                    collection.update_one({'id': info['id']}, {'$set': info})
+            return db[collection]
         except pymongo.errors.ServerSelectionTimeoutError:
             logger.warning(
                 u'系统中可能没有安装或启动MongoDB数据库，请先根据系统环境安装或启动MongoDB，再运行程序')
             sys.exit()
+
+    def info_to_mongodb(self, collection, info_list):
+        """将爬取的信息写入MongoDB数据库"""
+        if 'mongo' not in self.write_mode:
+            return
+        collection = self.get_mongodb_collection(collection)
+        if len(self.write_mode) > 1:
+            new_info_list = copy.deepcopy(info_list)
+        else:
+            new_info_list = info_list
+        for info in new_info_list:
+            if not collection.find_one({'id': info['id']}):
+                collection.insert_one(info)
+            else:
+                collection.update_one({'id': info['id']}, {'$set': info})
 
     def weibo_to_mongodb(self, wrote_count):
         """将爬取的微博信息写入MongoDB数据库"""
