@@ -61,9 +61,9 @@ class Weibo(object):
             'original_video_download']  # 取值范围为0、1, 0代表不下载原创微博视频,1代表下载
         self.retweet_video_download = config[
             'retweet_video_download']  # 取值范围为0、1, 0代表不下载转发微博视频,1代表下载
-        self.download_comment = config['download_comment']  #1代表下载评论,0代表不下载
+        self.download_comment = config['download_comment']  # 1代表下载评论,0代表不下载
         self.comment_max_download_count = config[
-            'comment_max_download_count']  #如果设置了下评论，每条微博评论数会限制在这个值内
+            'comment_max_download_count']  # 如果设置了下评论，每条微博评论数会限制在这个值内
         self.result_dir_name = config.get(
             'result_dir_name', 0)  # 结果目录名，取值为0或1，决定结果文件存储在用户昵称文件夹里还是用户id文件夹里
         cookie = config.get('cookie')  # 微博cookie，可填可不填
@@ -200,22 +200,22 @@ class Weibo(object):
         at_users_at_mongo = self.mongo_find('at_users', {})
         map_got = {}
         for item in at_users_at_mongo:
-            # logger.info('%s, %s',id, at_users)
+            # logger.info(u'%s, %s',id, at_users)
             if item.get('screen_name'):
                 map_got[item['screen_name']] = 1
 
         expired_name_list = self.mongo_find('expired_name_list', {})
         map_expired = {}
         for item in expired_name_list:
-            map_expired[item] = 1
-        #mysql 需要填充的
+            map_expired[item['id']] = 1
+        # mysql 需要填充的
         cusor = self.mysql_create_table(
-                    self.mysql_config, 'select id, at_users from weibo;')
+            self.mysql_config, 'select id, at_users from weibo;')
         counts = cusor.fetchall()
         resolved_nick_map = {}
         todo_list = []
         for (id, at_users) in counts:
-            # logger.info('%s, %s',id, at_users)
+            # logger.info(u'%s, %s',id, at_users)
             if at_users:
                 for at_user in at_users.split(','):
                     if not resolved_nick_map.get(at_user):
@@ -224,15 +224,16 @@ class Weibo(object):
                         # 过滤掉以获取以及已确认失效
                         if not map_got.get(at_user) and not map_expired.get(at_user):
                             todo_list.append(at_user)
-        logger.info('总计昵称数量：%d条', len(resolved_nick_map))
-        logger.info('总计昵称已获取：%d条', len(map_got))
-        logger.info('总计已确认无效：%d条', len(map_expired))
-        logger.info('总计待处理：%d条', len(todo_list))
+        logger.info(u'总计昵称数量：%d条', len(resolved_nick_map))
+        logger.info(u'总计昵称已获取：%d条', len(map_got))
+        logger.info(u'总计已确认无效：%d条', len(map_expired))
+        logger.info(u'总计待处理：%d条', len(todo_list))
         logger.info(todo_list)
 
         # self.get_mongodb_collection('expired_name_list').drop()
         map_expired_new = 0
         map_got_new = 0
+        logger.info(u'{}开始抓取{}'.format('*' * 30, '*' * 30))
         for item in todo_list:
             js = self.get_json_by_nick(item)
             if js and js['ok']:
@@ -240,15 +241,24 @@ class Weibo(object):
                 map_got[item] = at_user_dict
                 map_got_new += 1
                 self.info_to_mongodb('at_users', [at_user_dict])
-                # self.get_mongodb_collection(
-                #     'expired_name_list').delete_one({"id": item})
+                self.info_to_mongodb('resolved_name_list', [{"id": item}])
+                logger.info(u'第%d个用户:[%s]%s', map_got_new,
+                            at_user_dict['id'], item)
             else:
                 map_expired_new += 1
                 map_expired[item] = 'new'
-                self.info_to_mongodb('expired_name_list', {"id": item})
-        logger.info('{}共计处理{}条{}', '*' * 30, len(todo_list), '*' * 30)
-        logger.info('{}总计昵称新获取：{}条{}', '*' * 30, len(map_got_new),'*' * 30)
-        logger.info('{}总计新确认无效：{}条{}', '*' * 30, len(map_expired_new),'*' * 30)
+                self.info_to_mongodb('expired_name_list', [{"id": item}])
+                logger.info(u'第%d个用户expired:%s', map_got_new, item)
+            ss = random.randint(3, 20)
+            logger.info(u'sleep %ds', ss)
+            sleep(ss)
+        logger.info(u'{}结束抓取{}'.format('*' * 30, '*' * 30))
+        logger.info(u'{}共计处理{}条{}'.format('*' * 30, len(todo_list), '*' * 30))
+        logger.info(u'{}总计昵称新获取：{}条{}'.format(
+            '*' * 30, len(map_got_new), '*' * 30))
+        logger.info(u'{}总计新确认无效：{}条{}'.format('*' * 30,
+                    len(map_expired_new), '*' * 30))
+        logger.info(u'*' * 80)
 
     def get_mongodb_collection(self, collection):
         """将爬取的信息写入MongoDB数据库"""
@@ -293,6 +303,7 @@ class Weibo(object):
                 u'获取微博用户信息，昵称:{nick}'.format(nick=nick))
             logger.info(r.text)
             return None
+
     def mongo_find(self, collection, query):
         try:
             import pymongo
@@ -316,7 +327,7 @@ class Weibo(object):
             return collection.find(query)
         except Exception as e:
             logger.exception(e)
-                    
+
     def info_to_mongodb(self, collection, info_list):
         """将爬取的信息写入MongoDB数据库"""
         try:
@@ -519,7 +530,7 @@ class Weibo(object):
         try:
             self.do_fetch_at_users()
             logger.info(u'信息处理完毕')
-            logger.info('*' * 100)                
+            logger.info(u'*' * 100)
         except Exception as e:
             logger.exception(e)
 
