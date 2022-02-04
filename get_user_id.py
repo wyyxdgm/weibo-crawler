@@ -224,41 +224,45 @@ class Weibo(object):
                         # 过滤掉以获取以及已确认失效
                         if not map_got.get(at_user) and not map_expired.get(at_user):
                             todo_list.append(at_user)
+        total = len(todo_list)
         logger.info(u'总计昵称数量：%d条', len(resolved_nick_map))
         logger.info(u'总计昵称已获取：%d条', len(map_got))
         logger.info(u'总计已确认无效：%d条', len(map_expired))
-        logger.info(u'总计待处理：%d条', len(todo_list))
+        logger.info(u'总计待处理：%d条', total)
         logger.info(todo_list)
 
         # self.get_mongodb_collection('expired_name_list').drop()
         map_expired_new = 0
         map_got_new = 0
+        index = 0
         logger.info(u'{}开始抓取{}'.format('*' * 30, '*' * 30))
         for item in todo_list:
             js = self.get_json_by_nick(item)
+            index += 1
             if js and js['ok']:
                 at_user_dict = js['data']['userInfo']
                 map_got[item] = at_user_dict
                 map_got_new += 1
                 self.info_to_mongodb('at_users', [at_user_dict])
                 self.info_to_mongodb('resolved_name_list', [{"id": item}])
-                logger.info(u'第%d个用户:[%s]%s', map_got_new,
-                            at_user_dict['id'], item)
+                logger.info(u'第%d/%d个用户，获取成功:[%s]%s，当前成败比[%d,%d]',
+                            index, total, at_user_dict['id'], item, map_got_new, map_expired_new)
             else:
                 map_expired_new += 1
                 map_expired[item] = 'new'
                 self.info_to_mongodb('expired_name_list', [{"id": item}])
-                logger.info(u'第%d个用户expired:%s', map_got_new, item)
+                logger.info(u'第%d/%d个用户，已失效:%s，当前成败比[%d,%d]',
+                            index, total, item, map_got_new, map_expired_new)
             ss = random.randint(3, 20)
             logger.info(u'sleep %ds', ss)
             sleep(ss)
         logger.info(u'{}结束抓取{}'.format('*' * 30, '*' * 30))
         logger.info(u'{}共计处理{}条{}'.format('*' * 30, len(todo_list), '*' * 30))
         logger.info(u'{}总计昵称新获取：{}条{}'.format(
-            '*' * 30, len(map_got_new), '*' * 30))
+            '*' * 30, map_got_new, '*' * 30))
         logger.info(u'{}总计新确认无效：{}条{}'.format('*' * 30,
-                    len(map_expired_new), '*' * 30))
-        logger.info(u'*' * 80)
+                    map_expired_new, '*' * 30))
+        logger.info(u'{}结束{}', '' * 40, '' * 40)
 
     def get_mongodb_collection(self, collection):
         """将爬取的信息写入MongoDB数据库"""
@@ -294,6 +298,14 @@ class Weibo(object):
                              params={},
                              headers=headers,
                              verify=False)
+            if r.url == 'https://m.weibo.cn/n/%s' % nick:
+                if r.text and r.text.index('出错了') > -1 or r.text.index('用户不存在') > -1:
+                    logger.info('跳转失败，用户不存在')
+                else:
+                    logger.info('跳转失败，未知原因')
+                    logger.info(r.text)
+                    logger.info('*'*50)
+                return
             user_id = r.url[len('https://m.weibo.cn/u/'):]
             params = {'containerid': '100505' + user_id}
             return self.get_json(params, headers)
