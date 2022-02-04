@@ -24,7 +24,7 @@
   },
   "mongo_config": {
     "host": "localhost",
-    "port": 27017,
+    "port": 38128,
     "username": "",
     "password": ""
   }
