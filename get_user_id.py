@@ -200,6 +200,7 @@ class Weibo(object):
         at_users_at_mongo = self.mongo_find('at_users', {})
         map_got = {}
         map_got_by_id = {}
+        id_nick = {}
         for item in at_users_at_mongo:
             # logger.info(u'%s, %s',id, at_users)
             if item.get('screen_name'):
@@ -210,6 +211,9 @@ class Weibo(object):
             # logger.info(u'%s, %s',id, at_users)
             if item.get('userid') and map_got_by_id[item['userid']]:
                 map_got[item['id']] = 1
+                if not id_nick.get(item['userid']):
+                    id_nick[item['userid']] = [map_got_by_id[item['userid']]]
+                id_nick[item['userid']].append(item['id'])
 
         expired_name_list = self.mongo_find('expired_name_list', {})
         map_expired = {}
@@ -233,11 +237,16 @@ class Weibo(object):
                         if not map_got.get(at_user) and not map_expired.get(at_user):
                             todo_list.append(at_user)
         total = len(todo_list)
-        logger.info(u'总计昵称数量：%d条', len(resolved_nick_map))
+        # mysql 中weibo表at_users 字段分割后去重
+        logger.info(u'总计昵称数量：%d条 (可能混合大小写错误但同用户)', len(resolved_nick_map))
+        # mongo 中at_users表screen_name字段去重
         logger.info(u'总计昵称已获取：%d条', len(map_got))
         logger.info(u'总计已确认无效：%d条', len(map_expired))
         logger.info(u'总计待处理：%d条', total)
         logger.info(todo_list)
+        logger.info('-'*30)
+        logger.info('-'*30 + u'大小写情况' + '-'*30)
+        logger.info(id_nick)
 
         # self.get_mongodb_collection('expired_name_list').drop()
         map_expired_new = 0
@@ -271,7 +280,7 @@ class Weibo(object):
             '*' * 30, map_got_new, '*' * 30))
         logger.info(u'{}总计新确认无效：{}条{}'.format('*' * 30,
                     map_expired_new, '*' * 30))
-        logger.info(u'{}结束{}', '' * 40, '' * 40)
+        logger.info(u'{}结束{}'.format('' * 40, '' * 40))
 
     def get_mongodb_collection(self, collection):
         """将爬取的信息写入MongoDB数据库"""
