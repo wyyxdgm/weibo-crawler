@@ -199,15 +199,23 @@ class Weibo(object):
         # mongo 已经获取的
         at_users_at_mongo = self.mongo_find('at_users', {})
         map_got = {}
+        map_got_by_id = {}
         for item in at_users_at_mongo:
             # logger.info(u'%s, %s',id, at_users)
             if item.get('screen_name'):
                 map_got[item['screen_name']] = 1
+                map_got_by_id[item['id']] = item['screen_name']
+        resolved_name_list = self.mongo_find('resolved_name_list', {})
+        for item in resolved_name_list:
+            # logger.info(u'%s, %s',id, at_users)
+            if item.get('userid') and map_got_by_id[item['userid']]:
+                map_got[item['id']] = 1
 
         expired_name_list = self.mongo_find('expired_name_list', {})
         map_expired = {}
         for item in expired_name_list:
-            map_expired[item['id']] = 1
+            if not map_got.get(item['id']):
+                map_expired[item['id']] = 1
         # mysql 需要填充的
         cusor = self.mysql_create_table(
             self.mysql_config, 'select id, at_users from weibo;')
@@ -244,7 +252,8 @@ class Weibo(object):
                 map_got[item] = at_user_dict
                 map_got_new += 1
                 self.info_to_mongodb('at_users', [at_user_dict])
-                self.info_to_mongodb('resolved_name_list', [{"id": item}])
+                self.info_to_mongodb('resolved_name_list', [
+                                     {"id": item, "userid": at_user_dict['id']}])
                 logger.info(u'第%d/%d个用户，获取成功:[%s]%s，当前成败比[%d,%d]',
                             index, total, at_user_dict['id'], item, map_got_new, map_expired_new)
             else:
@@ -298,6 +307,7 @@ class Weibo(object):
                              params={},
                              headers=headers,
                              verify=False)
+            logger.info(r.url)
             if r.url == 'https://m.weibo.cn/n/%s' % nick:
                 if r.text and r.text.index('出错了') > -1 or r.text.index('用户不存在') > -1:
                     logger.info('跳转失败，用户不存在')
