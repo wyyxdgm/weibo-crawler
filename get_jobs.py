@@ -222,6 +222,7 @@ class Jobs(object):
 
         t = _time.time()
         t = int(t)
+        logger.info('%s~%s', self.start_page, page_count + 1)
         for page in tqdm(pages, desc='Progress'):
             t = t+1
             js = self.get_jobs_by_page(page, t)
@@ -231,7 +232,7 @@ class Jobs(object):
                 map_got[id] = res
                 map_got_new += 1
                 self.info_to_mongodb('jobs', [res])
-                logger.info(u'第%d/%d个用户，获取成功:[%s]%s',
+                logger.info(u'第%d/%d页，获取成功:[%s]%s',
                             page, page_count, id, map_got_new)
                 sleep(random.randint(5, 30))
             else:
