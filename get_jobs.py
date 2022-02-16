@@ -16,6 +16,7 @@ import sys
 import warnings
 from collections import OrderedDict
 from datetime import date, datetime, timedelta
+import time as _time
 from pathlib import Path
 from time import sleep
 
@@ -68,7 +69,14 @@ class Jobs(object):
             'result_dir_name', 0)  # 结果目录名，取值为0或1，决定结果文件存储在用户昵称文件夹里还是用户id文件夹里
         cookie = config.get('cookie')  # 微博cookie，可填可不填
         user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36'
-        self.headers = {'User-Agent': user_agent, 'Cookie': cookie}
+        self.headers = {
+            'User-Agent': user_agent,
+            'Cookie': cookie,
+            'Host': 'gwykl.fujian.gov.cn',
+            'Referer': 'http://gwykl.fujian.gov.cn/position',
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.80 Safari/537.36',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
         self.mysql_config = config.get('mysql_config')  # MySQL数据库连接配置，可以不填
         self.mongo_config = config.get('mongo_config')  # MongoDB数据库连接配置，可以不填
         user_id_list = config['user_id_list']
@@ -206,27 +214,31 @@ class Jobs(object):
             if item.get('id'):
                 map_got[item['id']] = 1
                 map_got_by_id[item['id']] = item['id']
-        
 
         logger.info(u'{}开始抓取{}'.format('*' * 30, '*' * 30))
         # url = 'http://gwykl.fujian.gov.cn/position'
         page_count = 352
-        pages = range(self.user_config['start_page'], page_count + 1)
+        pages = range(self.start_page, page_count + 1)
 
+        t = _time.time()
+        t = int(t)
         for page in tqdm(pages, desc='Progress'):
-            js = self.get_jobs_by_page(page)
+            t = t+1
+            js = self.get_jobs_by_page(page, t)
             if js:
-                res = js['data']['userInfo']
-                id = 'id'
+                res = {"res": js, "id": page}
+                id = res['id']
                 map_got[id] = res
                 map_got_new += 1
-                self.info_to_mongodb('at_users', [res])
+                self.info_to_mongodb('jobs', [res])
                 logger.info(u'第%d/%d个用户，获取成功:[%s]%s',
-                            page, page_count, res['id'], id, map_got_new)
+                            page, page_count, id, map_got_new)
+                sleep(random.randint(5, 30))
             else:
                 logger.info(u'第%d页中断' % page)
                 sys.exit(1)
         logger.info(u'{}结束抓取{}'.format('*' * 30, '*' * 30))
+
     def get_mongodb_collection(self, collection):
         """将爬取的信息写入MongoDB数据库"""
         try:
@@ -253,31 +265,49 @@ class Jobs(object):
                 u'系统中可能没有安装或启动MongoDB数据库，请先根据系统环境安装或启动MongoDB，再运行程序')
             sys.exit()
 
-    def get_jobs_by_page(self, page):
+    def get_jobs_by_page(self, page, t):
         try:
             # headers = copy.deepcopy(self.headers)
             # del headers['Cookie']
-            r = requests.get('http://gwykl.fujian.gov.cn/z/api.aspx?action=PositionSearch&page=%d&unitCode=&unitName=&unitType=undefined&unitArea=&unitLevel=&positionCode=&positionName=&departmentId=undefined&examType=&eduStatus=&hJLocation=&sex=undefined&jobYear=&nation=&political=&degree=&eduType=&specialPosition=&specialXQPosition=&specialty=&number=&age=&jsoncallback=jQuery1124011043144207625666_1644986205228&_=1644986205230' % page,
-                             params={},
+            r = requests.get('http://gwykl.fujian.gov.cn/z/api.aspx',
+                             params={
+                                 "action": "PositionSearch",
+                                 "page": 1,
+                                 "unitCode": '',
+                                 "unitName": '',
+                                 "unitType": '',
+                                 "unitArea": '',
+                                 "unitLevel": '',
+                                 "positionCode": '',
+                                 "positionName": '',
+                                 "departmentId": '',
+                                 "examType": '',
+                                 "eduStatus": '',
+                                 "hJLocation": '',
+                                 "sex": '',
+                                 "jobYear": '',
+                                 "nation": '',
+                                 "political": '',
+                                 "degree": '',
+                                 "eduType": '',
+                                 "specialPosition": '',
+                                 "specialXQPosition": '',
+                                 "specialty": '',
+                                 "number": '',
+                                 "age": '',
+                                 "jsoncallback": 'jQuery1124029741070326931474_%s' % t,
+                                 "_": t
+                             },
                              headers=self.headers,
                              verify=False)
-            logger.info(r.url)
-            if r.url == 'https://m.jobs.cn/n/%s' % page:
-                if r.text and r.text.index('出错了') > -1 or r.text.index('用户不存在') > -1:
-                    logger.info('跳转失败，用户不存在')
-                else:
-                    logger.info('跳转失败，未知原因')
-                    logger.info(r.text)
-                    logger.info('*'*50)
-                return
-            user_id = r.url[len('https://m.jobs.cn/u/'):]
-            params = {'containerid': '100505' + user_id}
-            return self.get_json(params, headers)
+            logger.info(r.text)
+            if r.text:
+                logger.info('getted')
+                logger.info(r.text)
+            return r.text
         except Exception as e:
             # 没有cookie会获取失败
-            logger.info(
-                u'获取微博用户信息，昵称:{nick}'.format(nick=nick))
-            logger.info(r.text)
+            logger.info(u'failed')
             return None
 
     def mongo_find(self, collection, query):
