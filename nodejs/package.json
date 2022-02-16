@@ -1,0 +1,11 @@
+{
+  "name": "get-jobs",
+  "version": "1.0.0",
+  "description": "get jobs by nodejs",
+  "main": "get_jobs.js",
+  "scripts": {
+    "test": "node get_jobs.js"
+  },
+  "author": "",
+  "license": "ISC"
+}
