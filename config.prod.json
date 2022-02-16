@@ -3,7 +3,7 @@
   "filter": 0,
   "remove_html_tag": 1,
   "since_date": "2001-01-01",
-  "start_page": 1,
+  "start_page": 629,
   "record_last_page": 1,
   "write_mode": ["csv", "mysql", "mongo"],
   "original_data_to_mongo": 1,
@@ -17,14 +17,14 @@
   "cookie": "UM_distinctid=17f03140943411-09218148801a38-133f685c-13c680-17f031409449a1; CNZZDATA1906642=cnzz_eid%3D1270797204-1645016952-null%26ntime%3D1645016952",
   "mysql_config": {
     "host": "localhost",
-    "port": 3306,
+    "port": 6603,
     "user": "root",
-    "password": "password",
+    "password": "2ce9dfb7c1f1c2f7",
     "charset": "utf8mb4"
   },
   "mongo_config": {
     "host": "localhost",
-    "port": 27017,
+    "port": 38128,
     "username": "",
     "password": ""
   }
