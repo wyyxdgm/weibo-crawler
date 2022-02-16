@@ -3,7 +3,7 @@
   "filter": 0,
   "remove_html_tag": 1,
   "since_date": "2001-01-01",
-  "start_page": 629,
+  "start_page": 1,
   "record_last_page": 1,
   "write_mode": ["csv", "mysql", "mongo"],
   "original_data_to_mongo": 1,
@@ -14,17 +14,17 @@
   "download_comment": 0,
   "comment_max_download_count": 100,
   "result_dir_name": 0,
-  "cookie": "WEIBOCN_FROM=1110006030; loginScene=102003; SUB=_2A25M_8hqDeRhGeFJ6VsZ9irFzDqIHXVsA-girDV6PUJbkdCOLRj1kW1NfFMDIXGVclc0qBMjYuOen4iqvzUzyDPg; _T_WM=23501623942; XSRF-TOKEN=d2dfba; MLOGIN=1; M_WEIBOCN_PARAMS=luicode%3D10000011%26lfid%3D1076036815283367%26fid%3D1005056815283367%26uicode%3D10000011",
+  "cookie": "UM_distinctid=17f03140943411-09218148801a38-133f685c-13c680-17f031409449a1; CNZZDATA1906642=cnzz_eid%3D1270797204-1645016952-null%26ntime%3D1645016952",
   "mysql_config": {
     "host": "localhost",
-    "port": 6603,
+    "port": 3306,
     "user": "root",
-    "password": "2ce9dfb7c1f1c2f7",
+    "password": "password",
     "charset": "utf8mb4"
   },
   "mongo_config": {
     "host": "localhost",
-    "port": 38128,
+    "port": 27017,
     "username": "",
     "password": ""
   }
