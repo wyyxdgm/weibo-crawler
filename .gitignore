@@ -2,3 +2,4 @@
 /weibo
 .vscode
 node_modules
+tmp/
