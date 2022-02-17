@@ -273,7 +273,7 @@ class Jobs(object):
             r = requests.get('http://gwykl.fujian.gov.cn/z/api.aspx',
                              params={
                                  "action": "PositionSearch",
-                                 "page": t,
+                                 "page": page,
                                  "unitCode": '',
                                  "unitName": '',
                                  "unitType": '',
