@@ -301,9 +301,11 @@ class Jobs(object):
                              },
                              headers=self.headers,
                              verify=False)
-            logger.info(r.text)
             if r.text:
                 logger.info('getted')
+                logger.info(r.text)
+            else:
+                logger.info('error')
                 logger.info(r.text)
             return r.text
         except Exception as e:
