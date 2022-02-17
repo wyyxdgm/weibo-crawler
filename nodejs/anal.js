@@ -2,7 +2,11 @@ var MongoClient = require("mongodb").MongoClient;
 var url = "mongodb://localhost:27017/";
 const tabletojson = require("tabletojson").Tabletojson;
 // const exportFromJSON = require("export-from-json");
+const { mongo_config } = require("../config.json");
 
+if (mongo_config.port) {
+  url = `mongodb://${mongo_config.host}:${mongo_config.port}`;
+}
 MongoClient.connect(url, function (err, db) {
   if (err) throw err;
   console.log("数据库链接成功!");
@@ -23,10 +27,10 @@ MongoClient.connect(url, function (err, db) {
         alljobs = alljobs.concat(converted);
         return tablehtml;
       });
-      console.log(alljobs.length);
+      console.log("total:", alljobs.length);
       let resolvedJobs = [];
       const keys = {};
-      alljobs.map((propsArr) => {
+      alljobs.map((propsArr, index) => {
         let item = {};
         propsArr.map((ij, _idx) => {
           for (let idx = 0; idx < Object.keys(ij).length; idx++) {
@@ -37,10 +41,11 @@ MongoClient.connect(url, function (err, db) {
             }
           }
         });
+        console.log("done", index);
         resolvedJobs.push(item);
       });
       let keyArr = Object.keys(keys);
-      console.log("keys", keys);
+      console.log("keys", keyArr);
       resolvedJobs = resolvedJobs.map((obj) => keyArr.map((k) => obj[k] || ""));
       resolvedJobs.unshift(keyArr); // 插入表头
       // const fileName = "jobs";
