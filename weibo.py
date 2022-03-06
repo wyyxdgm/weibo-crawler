@@ -1643,7 +1643,11 @@ class Weibo(object):
         data['start_page'] = page
         if not data.get('start_page_list'):
             data['start_page_list'] = []
-        data['start_page_list'].append(page)
+        data['start_page_list'].append({
+            "page": page,
+            "page_count": data['page_count'],
+            "time": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
         with codecs.open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False)
         logger.info(u'记录当前页号%d,写入json文件完毕,保存路径:%s', page, path)
