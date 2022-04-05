@@ -663,6 +663,7 @@ class Weibo(object):
         selector = etree.HTML(text_body)
         if self.remove_html_tag:
             weibo['text'] = selector.xpath('string(.)')
+            # TODO 匹配出关键内容
         else:
             weibo['text'] = text_body
         weibo['article_url'] = self.get_article_url(selector)
@@ -803,8 +804,16 @@ class Weibo(object):
         for item in results:
             # logger.info('%s, %s',id, at_users)
             if item.get('screen_name'):
-                self.users_by_n[item['screen_name']] = 1
+                self.users_by_n[item['screen_name']] = item['id']
+        resolved_name_list = self.get_mongodb_collection('resolved_name_list')
         logger.info(u'初始化读取at_users完成,一共%d条记录\n%s', len(self.users_by_n), list(self.users_by_n.keys()))
+        resolved_name_list_results = resolved_name_list.find()
+        resolved_append_count = 0
+        for item in resolved_name_list_results:
+            if item.get('userid') and item.get('id') and not self.users_by_n.get(item['id']):
+                self.users_by_n[item['id']] = item['userid']
+                resolved_append_count += 1
+        logger.info(u'初始化resolved_name_list拼接到at_users完成,拼接%d条,已知at_users总计%d条\n%s', resolved_append_count, len(self.users_by_n), list(self.users_by_n.keys()))
 
     def get_at_users_detail(self, weibo):
         """获取@微博用户详情信息"""
@@ -813,6 +822,7 @@ class Weibo(object):
         if weibo.get('at_users') and len(weibo['at_users']) > 0:
             logger.info(u'获取@微博用户详情信息: %s', weibo['at_users'])
             at_users = {}
+            weibo['at_users_id'] = {}
             for at_user in set(weibo['at_users'].split(',')):
                 if at_user not in self.users_by_n:
                     js = self.get_json_by_nick(at_user)
@@ -824,10 +834,14 @@ class Weibo(object):
                         if screen_name and not self.users_by_n.get(screen_name):
                             # user -- screen_name,id,location,gender
                             at_users[screen_name] = at_user_dict
-                            self.users_by_n[screen_name] = at_user_dict
+                            self.users_by_n[screen_name] = at_user_dict['id']
                     else:
                         logger.info(u'获取微博@用户失败！！昵称: %s', at_user)
+                weibo['at_users_id'][self.users_by_n[at_user]] = at_user
+                # TODO @类型数据的对应类型标记
+                logger.info(weibo['text'])
             self.info_to_mongodb('at_users', list(at_users.values()))
+
             logger.info(u'写入数据库{}个用户:[{}]'.format(len(at_users), ','.join(at_users.keys())))
     def get_weibo_comments(self, weibo, max_count, on_downloaded):
         """
@@ -986,6 +1000,8 @@ class Weibo(object):
                     if w['card_type'] == 9:
                         wb = self.get_one_weibo(w)
                         if wb:
+                            # 保存完成weibo
+                            self.save_original_data_to_mongo('original_wb', [wb])
                             if wb['id'] in self.weibo_id_list:
                                 continue
                             created_at = datetime.strptime(
