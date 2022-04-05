@@ -39,6 +39,10 @@ class Weibo(object):
             'filter']  # 取值范围为0、1,程序默认值为0,代表要爬取用户的全部微博,1代表只爬取用户的原创微博
         self.remove_html_tag = config[
             'remove_html_tag']  # 取值范围为0、1, 0代表不移除微博中的html tag, 1代表移除
+        self.dump_text_as_array = config['dump_text_as_array'] # 保留浅层a标签
+        self.keep_a_tag = config['keep_a_tag'] # 保留浅层a标签
+        self.keep_nested_a_tag = config['keep_nested_a_tag'] # 保留嵌套的a标签
+        self.keep_img_tag = config['keep_img_tag']  # 保留img标签
         since_date = config['since_date']
         if isinstance(since_date, int):
             since_date = date.today() - timedelta(since_date)
@@ -661,9 +665,9 @@ class Weibo(object):
         weibo['bid'] = weibo_info['bid']
         text_body = weibo_info['text']
         selector = etree.HTML(text_body)
+        weibo['html'] = text_body
         if self.remove_html_tag:
             weibo['text'] = selector.xpath('string(.)')
-            # TODO 匹配出关键内容
         else:
             weibo['text'] = text_body
         weibo['article_url'] = self.get_article_url(selector)
@@ -776,6 +780,7 @@ class Weibo(object):
             weibo['created_at'] = self.standardize_date(
                 weibo_info['created_at'])
             self.get_at_users_detail(weibo)
+            self.get_text_as_array(weibo)
             return weibo
         except Exception as e:
             logger.exception(e)
@@ -815,6 +820,81 @@ class Weibo(object):
                 resolved_append_count += 1
         logger.info(u'初始化resolved_name_list拼接到at_users完成,拼接%d条,已知at_users总计%d条\n%s', resolved_append_count, len(self.users_by_n), list(self.users_by_n.keys()))
 
+    def get_text_as_array(self, weibo):
+        if self.dump_text_as_array:
+            if weibo['html']:
+                weibo['text_array'] = self.html2Array(weibo['html'])
+            if weibo.get('retweet') and weibo['retweet'].get('text'):
+                weibo['retweet']['text_array'] = self.html2Array(weibo['retweet']['text'])
+
+    def html2Array(self, text_body):
+        selector = etree.HTML(text_body)
+        allnodes = selector.xpath('.')
+        return self.resolve_nodes(allnodes)
+
+    def get_child_of_one_node(self, node):
+        """换行元素返回数组，行内元素返回str"""
+        text = node.text or ''
+        tail = node.tail or ''
+        isArr = node.tag in ['p', 'div']
+        childs = list(node)
+        # logger.info(etree.dump(node))
+        res2 = self.resolve_nodes(childs)
+        isRes2List = isinstance(res2, list)
+        if isRes2List:
+            isArr = True
+        if res2:
+            res = [text] if isArr and text else []
+            if isinstance(res2, str):
+                if res2.find('一起逃命xxxx') > 0:
+                    logger.info(res)
+                res = text + res2
+                if self.keep_nested_a_tag and node.tag == 'a' and node.get('href'):
+                    res = u"[{txt}]({href})".format(
+                        txt=res.strip(), href=node.get('href'))
+            elif isRes2List:
+                res.extend(res2)
+            if node.tail:
+                if isArr:
+                    res.append(node.tail)
+                else:
+                    res += node.tail
+            return res
+        else:
+            txt = text + tail or ''
+            if self.keep_a_tag and node.tag == 'a' and node.get('href'):
+                txt = u"[{text}]({href})".format(
+                    text=text.strip(), href=node.get('href')) + tail or ''
+            if self.keep_img_tag and node.tag == 'img' and node.get('src'):
+                txt = u"![]({src})".format(src=node.get('src'))
+            return [txt] if isArr else txt
+
+    def resolve_nodes(self, nodes):
+        """处理多节点，换行元素返回数组，行内元素返回str"""
+        res = ['']
+        isArr = False
+        for oneNode in nodes:
+            if oneNode.tag == 'br':
+                isArr = True
+                if oneNode.tail:
+                    res.append(oneNode.tail)
+            else:
+                subRes = self.get_child_of_one_node(oneNode)
+                if subRes:
+                    if isinstance(subRes, list):
+                        isArr = True
+                        res.extend(subRes)
+                        # i += len(subRes)
+                    else:
+                        if len(res) == 0:
+                            res.append(subRes)
+                        else:
+                            res[-1] += subRes
+
+                        # get_child_of_one_node
+        return list(filter(lambda item: item, res)) if isArr else res[0]
+
+
     def get_at_users_detail(self, weibo):
         """获取@微博用户详情信息"""
         if 'mongo' not in self.write_mode:
@@ -837,8 +917,8 @@ class Weibo(object):
                             self.users_by_n[screen_name] = at_user_dict['id']
                     else:
                         logger.info(u'获取微博@用户失败！！昵称: %s', at_user)
-                weibo['at_users_id'][self.users_by_n[at_user]] = at_user
-                # TODO @类型数据的对应类型标记
+                if self.users_by_n[at_user]:
+                    weibo['at_users_id']["{}".format(self.users_by_n[at_user])] = at_user
                 logger.info(weibo['text'])
             self.info_to_mongodb('at_users', list(at_users.values()))
 
@@ -1001,7 +1081,7 @@ class Weibo(object):
                         wb = self.get_one_weibo(w)
                         if wb:
                             # 保存完成weibo
-                            self.save_original_data_to_mongo('original_wb', [wb])
+                            self.save_original_data_to_mongo('original_weibo_v2', [wb])
                             if wb['id'] in self.weibo_id_list:
                                 continue
                             created_at = datetime.strptime(
@@ -1341,16 +1421,26 @@ class Weibo(object):
         for w in info_list:
             if 'retweet' in w:
                 w['retweet']['retweet_id'] = ''
+                self.resolvePropForSql(w['retweet'])
                 retweet_list.append(w['retweet'])
                 w['retweet_id'] = w['retweet']['id']
                 del w['retweet']
             else:
                 w['retweet_id'] = ''
+            self.resolvePropForSql(w)
             weibo_list.append(w)
         # 在'weibo'表中插入或更新微博数据
         self.mysql_insert(mysql_config, 'weibo', retweet_list)
         self.mysql_insert(mysql_config, 'weibo', weibo_list)
         logger.info(u'%d条微博写入MySQL数据库完毕', self.got_count)
+    def resolvePropForSql(self, w):
+        if 'html' in w:
+            del w['html']
+        if 'text_array' in w:
+            del w['text_array']
+        if  'at_users_id' in w:
+            del w['at_users_id']
+        return w
 
     def weibo_to_sqlite(self, wrote_count):
         con = self.get_sqlite_connection()
@@ -1363,11 +1453,13 @@ class Weibo(object):
         for w in info_list:
             if 'retweet' in w:
                 w['retweet']['retweet_id'] = ''
+                self.resolvePropForSql(w['retweet'])
                 retweet_list.append(w['retweet'])
                 w['retweet_id'] = w['retweet']['id']
                 del w['retweet']
             else:
                 w['retweet_id'] = ''
+            self.resolvePropForSql(w)
             weibo_list.append(w)
 
         max_count = self.comment_max_download_count
