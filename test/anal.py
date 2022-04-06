@@ -16,6 +16,7 @@ logging_path = os.getcwd() + os.sep + 'logging.conf'
 logging.config.fileConfig(logging_path)
 logger = logging.getLogger('test')
 
+config = True
 
 def html2Array(text_body):
     selector = etree.HTML(text_body)
@@ -40,7 +41,7 @@ def get_child_of_one_node(node):
             if res2.find('一起逃命xxxx') > 0:
                 logger.info(res)
             res = text+res2
-            if False and node.tag == 'a' and node.get('href'):
+            if config and node.tag == 'a' and node.get('href'):
                 res = u"[{txt}]({href})".format(
                     txt=res.strip(), href=node.get('href'))
         elif isRes2List:
@@ -53,10 +54,10 @@ def get_child_of_one_node(node):
         return res
     else:
         txt = text + tail or ''
-        if False and node.tag == 'a' and node.get('href'):
+        if config and node.tag == 'a' and node.get('href'):
             txt = u"[{text}]({href})".format(
                 text=text.strip(), href=node.get('href')) + tail or ''
-        if False and node.tag == 'img' and node.get('src'):
+        if config and node.tag == 'img' and node.get('src'):
             txt = u"![]({src})".format(src=node.get('src'))
         return [txt] if isArr else txt
 
