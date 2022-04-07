@@ -18,7 +18,7 @@
   "download_comment": 0,
   "comment_max_download_count": 100,
   "result_dir_name": 0,
-  "cookie": "WEIBOCN_FROM=1110006030; SUB=_2A25PSI-FDeRhGeFJ6VsZ9irFzDqIHXVsshHNrDV6PUJbkdAKLVnwkW1NfFMDIU56j1NihSR84SNJInP-NsADo0VH; _T_WM=48630129986; MLOGIN=1; XSRF-TOKEN=bf4be8; mweibo_short_token=cac4439783; M_WEIBOCN_PARAMS=lfid%3D102803%26luicode%3D20000174%26fid%3D1078036942059252%26uicode%3D10000011",
+  "cookie": "WEIBOCN_FROM=1110006030; SUB=_2A25PSI-FDeRhGeFJ6VsZ9irFzDqIHXVsshHNrDV6PUJbkdAKLVnwkW1NfFMDIU56j1NihSR84SNJInP-NsADo0VH; MLOGIN=1; _T_WM=83705902440; XSRF-TOKEN=c50da9; M_WEIBOCN_PARAMS=luicode%3D20000174%26uicode%3D20000174",
   "mysql_config": {
     "host": "localhost",
     "port": 3306,
