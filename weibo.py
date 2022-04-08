@@ -917,8 +917,13 @@ class Weibo(object):
                             self.users_by_n[screen_name] = at_user_dict['id']
                     else:
                         logger.info(u'获取微博@用户失败！！昵称: %s', at_user)
-                if self.users_by_n[at_user]:
+                if self.users_by_n.get(at_user):
                     weibo['at_users_id']["{}".format(self.users_by_n[at_user])] = at_user
+                else:
+                    if weibo['at_users_id'].get('$unknown'):
+                        weibo['at_users_id']["$unknown"].append(at_user)
+                    else:
+                        weibo['at_users_id']["$unknown"] = [at_user]
                 logger.info(weibo['text'])
             self.info_to_mongodb('at_users', list(at_users.values()))
 
