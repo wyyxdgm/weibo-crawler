@@ -18,7 +18,10 @@
   "download_comment": 0,
   "comment_max_download_count": 100,
   "result_dir_name": 0,
-  "cookie": "WEIBOCN_FROM=1110006030; SUB=_2A25PSI-FDeRhGeFJ6VsZ9irFzDqIHXVsshHNrDV6PUJbkdAKLVnwkW1NfFMDIU56j1NihSR84SNJInP-NsADo0VH; MLOGIN=1; _T_WM=83705902440; XSRF-TOKEN=c50da9; M_WEIBOCN_PARAMS=luicode%3D20000174%26uicode%3D20000174",
+  "user_weibo_dir": {
+    "棉花娃衣bot": "weibo/美娃娃bot"
+  },
+  "cookie": "SINAGLOBAL=5561647918511.923.1643724548045; UOR=,,login.sina.com.cn; SUBP=0033WrSXqPxfM725Ws9jqgMF55529P9D9WWF_2Zz2CrN-eWni4aeoUWJ5JpX5KMhUgL.FoMNeo.RSoB4S0q2dJLoI0eLxKnLBo-LB-zLxKnL12qLBozLxKqL1KqLB-qLxKqL1h.L1KnLxKqL1KqLB-9Q9PWQ9Pet; ALF=1681079157; SSOLoginState=1649543158; SCF=An9QtvndDAuXdKOmSrdCmQVIvh_Ri1onsWubU-RTCWlu_CH9Ly6L5uKktcJFaPzORAxlSpyxSTBV-8ChIeyWOEg.; SUB=_2A25PVnemDeRhGeFJ6VsZ9irFzDqIHXVsIu5urDV8PUNbmtAKLWnjkW9NfFMDITZmcBL9JYNhapuCASlI2PNz5QSb; _s_tentry=login.sina.com.cn; Apache=633682838789.6066.1649543170982; ULV=1649543171072:5:1:1:633682838789.6066.1649543170982:1645198671952; wb_view_log_7729864976=1440*9002; webim_unReadCount=%7B%22time%22%3A1649543679498%2C%22dm_pub_total%22%3A0%2C%22chat_group_client%22%3A0%2C%22chat_group_notice%22%3A0%2C%22allcountNum%22%3A21%2C%22msgbox%22%3A0%7D",
   "mysql_config": {
     "host": "localhost",
     "port": 6603,

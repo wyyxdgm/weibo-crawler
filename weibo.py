@@ -69,6 +69,8 @@ class Weibo(object):
             'comment_max_download_count']  #如果设置了下评论，每条微博评论数会限制在这个值内
         self.result_dir_name = config.get(
             'result_dir_name', 0)  # 结果目录名，取值为0或1，决定结果文件存储在用户昵称文件夹里还是用户id文件夹里
+        self.user_weibo_dir = config.get(
+            'user_weibo_dir', 0)  # 自定义用户替代weibo目录名
         cookie = config.get('cookie')  # 微博cookie，可填可不填
         user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36'
         self.headers = {'User-Agent': user_agent, 'Cookie': cookie}
@@ -1176,8 +1178,11 @@ class Weibo(object):
             dir_name = self.user['screen_name']
             if self.result_dir_name:
                 dir_name = self.user_config['user_id']
+            user_weibo_dir = 'weibo'
+            if self.user_weibo_dir and self.user_weibo_dir.get(self.user['screen_name']):
+                user_weibo_dir = os.sep.join(self.user_weibo_dir[self.user['screen_name']].split('/'))
             file_dir = os.path.split(os.path.realpath(
-                __file__))[0] + os.sep + 'weibo' + os.sep + dir_name
+                    __file__))[0] + os.sep + user_weibo_dir + os.sep + dir_name
             if type == 'img' or type == 'video':
                 file_dir = file_dir + os.sep + type
             if not os.path.isdir(file_dir):
